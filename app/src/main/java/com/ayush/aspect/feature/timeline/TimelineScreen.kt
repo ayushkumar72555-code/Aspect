@@ -82,7 +82,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                     onMediaClick = { item ->
                         if (state.isSelectionMode) viewModel.toggleSelection(item.id)
                     },
-                    onMediaLongPress = viewModel::toggleSelection
+                    onMediaLongPress = { item -> viewModel.toggleSelection(item.id) }
                 )
             }
 
