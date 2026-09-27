@@ -40,6 +40,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
     implementation(libs.androidx.hilt)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
