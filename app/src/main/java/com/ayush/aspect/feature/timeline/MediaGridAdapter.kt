@@ -2,8 +2,10 @@ package com.ayush.aspect.feature.timeline
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -11,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.request.target
 import coil3.size.Size
 import com.ayush.aspect.core.data.MediaItem
 
@@ -36,7 +39,7 @@ internal class MediaGridAdapter(
     }
 
     override fun getItemId(position: Int): Long = when (val item = items[position]) {
-        is MediaGridItem.Header -> (Long.MIN_VALUE + position)
+        is MediaGridItem.Header -> Long.MIN_VALUE + position
         is MediaGridItem.Media -> item.item.id
     }
 
@@ -45,18 +48,24 @@ internal class MediaGridAdapter(
         is MediaGridItem.Media -> if (item.item.isVideo) VIEW_TYPE_VIDEO else VIEW_TYPE_IMAGE
     }
 
-    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return when (viewType) {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+        when (viewType) {
             VIEW_TYPE_HEADER -> HeaderViewHolder(HeaderView(context))
             else -> MediaViewHolder(MediaCellView(context), imageLoader, onMediaLongPress)
         }
-    }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = items[position]) {
             is MediaGridItem.Header -> (holder as HeaderViewHolder).bind(item.title)
             is MediaGridItem.Media -> (holder as MediaViewHolder).bind(item.item)
         }
+    }
+
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        if (holder is MediaViewHolder) {
+            holder.clearImage()
+        }
+        super.onViewRecycled(holder)
     }
 
     override fun getItemCount(): Int = items.size
@@ -67,11 +76,13 @@ internal class MediaGridAdapter(
         notifyDataSetChanged()
     }
 
-    class HeaderViewHolder(private val view: HeaderView) : RecyclerView.ViewHolder(view) {
+    private class HeaderViewHolder(
+        private val view: HeaderView
+    ) : RecyclerView.ViewHolder(view) {
         fun bind(title: String) = view.bind(title)
     }
 
-    class MediaViewHolder(
+    private class MediaViewHolder(
         private val view: MediaCellView,
         private val imageLoader: ImageLoader,
         private val onLongPress: (MediaItem) -> Unit
@@ -80,9 +91,8 @@ internal class MediaGridAdapter(
             view.bind(item, imageLoader, onLongPress)
         }
 
-        override fun onViewRecycled() {
+        fun clearImage() {
             view.clearImage()
-            super.onViewRecycled()
         }
     }
 }
@@ -91,7 +101,7 @@ private class HeaderView(context: Context) : TextView(context) {
     init {
         setTextColor(Color.WHITE)
         setTextSize(14f)
-        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setTypeface(typeface, Typeface.BOLD)
         setPadding(dp(16), dp(9), dp(16), dp(9))
         setBackgroundColor(Color.argb(238, 20, 20, 20))
         gravity = Gravity.CENTER_VERTICAL
