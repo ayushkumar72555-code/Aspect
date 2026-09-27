@@ -3,6 +3,7 @@ package com.ayush.aspect.feature.timeline
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +17,7 @@ import coil3.request.crossfade
 import coil3.request.target
 import coil3.size.Size
 import com.ayush.aspect.core.data.MediaItem
+import java.util.Locale
 
 private const val VIEW_TYPE_HEADER = 0
 private const val VIEW_TYPE_IMAGE = 1
@@ -97,10 +99,10 @@ internal class MediaGridAdapter(
 private class HeaderView(context: Context) : TextView(context) {
     init {
         setTextColor(Color.WHITE)
-        setTextSize(14f)
+        setTextSize(18f)
         setTypeface(typeface, Typeface.BOLD)
-        setPadding(dp(16), dp(9), dp(16), dp(9))
-        setBackgroundColor(Color.argb(238, 20, 20, 20))
+        setPadding(dp(16), dp(12), dp(16), dp(8))
+        setBackgroundColor(Color.TRANSPARENT)
         gravity = Gravity.CENTER_VERTICAL
     }
     fun bind(title: String) { text = title }
@@ -108,44 +110,78 @@ private class HeaderView(context: Context) : TextView(context) {
 }
 
 private class MediaCellView(context: Context) : FrameLayout(context) {
+    private val cornerRadius = dp(10).toFloat()
     private val image = ImageView(context).apply {
         scaleType = ImageView.ScaleType.CENTER_CROP
-        setBackgroundColor(Color.rgb(28, 28, 28))
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = this@MediaCellView.cornerRadius
+            setColor(Color.rgb(27, 25, 32))
+        }
+        clipToOutline = true
     }
     private val selectionScrim = View(context).apply {
-        setBackgroundColor(Color.argb(88, 255, 255, 255))
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = this@MediaCellView.cornerRadius
+            setColor(Color.argb(75, 205, 188, 255))
+        }
         visibility = View.GONE
     }
     private val check = TextView(context).apply {
         text = "✓"
-        textSize = 17f
+        textSize = 15f
         setTextColor(Color.WHITE)
         setTypeface(typeface, Typeface.BOLD)
         gravity = Gravity.CENTER
-        setBackgroundColor(Color.argb(225, 45, 115, 245))
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.rgb(111, 82, 170))
+        }
         visibility = View.GONE
     }
     private val videoBadge = TextView(context).apply {
         text = "▶"
-        textSize = 12f
+        textSize = 10f
         setTextColor(Color.WHITE)
-        setBackgroundColor(Color.argb(185, 0, 0, 0))
         gravity = Gravity.CENTER
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(8).toFloat()
+            setColor(Color.argb(190, 10, 9, 13))
+        }
+        visibility = View.GONE
+    }
+    private val durationBadge = TextView(context).apply {
+        textSize = 10f
+        setTextColor(Color.WHITE)
+        setTypeface(typeface, Typeface.BOLD)
+        gravity = Gravity.CENTER
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(7).toFloat()
+            setColor(Color.argb(175, 10, 9, 13))
+        }
         visibility = View.GONE
     }
     private var request: coil3.request.Disposable? = null
 
     init {
-        clipToPadding = false
         clipChildren = true
+        clipToOutline = true
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = cornerRadius
+            setColor(Color.rgb(27, 25, 32))
+        }
         addView(image, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(selectionScrim, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        addView(check, LayoutParams(dp(34), dp(34), Gravity.TOP or Gravity.END).apply { setMargins(0, dp(8), dp(8), 0) })
-        addView(videoBadge, LayoutParams(dp(30), dp(30), Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, dp(6), dp(6)) })
+        addView(check, LayoutParams(dp(30), dp(30), Gravity.TOP or Gravity.END).apply { setMargins(0, dp(7), dp(7), 0) })
+        addView(videoBadge, LayoutParams(dp(28), dp(28), Gravity.BOTTOM or Gravity.START).apply { setMargins(dp(7), 0, 0, dp(7)) })
+        addView(durationBadge, LayoutParams(LayoutParams.WRAP_CONTENT, dp(25), Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, dp(7), dp(7)) })
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // Keep every gallery cell square. Use the actual width supplied by RecyclerView.
         val width = View.MeasureSpec.getSize(widthMeasureSpec)
         val squareSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
         super.onMeasure(widthMeasureSpec, squareSpec)
@@ -160,6 +196,8 @@ private class MediaCellView(context: Context) : FrameLayout(context) {
     ) {
         contentDescription = item.displayName
         videoBadge.visibility = if (item.isVideo) View.VISIBLE else View.GONE
+        durationBadge.visibility = if (item.isVideo && item.durationMillis > 0) View.VISIBLE else View.GONE
+        if (item.isVideo) durationBadge.text = formatDuration(item.durationMillis)
         selectionScrim.visibility = if (selected) View.VISIBLE else View.GONE
         check.visibility = if (selected) View.VISIBLE else View.GONE
         request?.dispose()
@@ -167,7 +205,7 @@ private class MediaCellView(context: Context) : FrameLayout(context) {
         request = imageLoader.enqueue(
             ImageRequest.Builder(context)
                 .data(item.uri)
-                .size(Size(320, 320))
+                .size(Size(360, 360))
                 .crossfade(false)
                 .target(image)
                 .build()
@@ -184,6 +222,13 @@ private class MediaCellView(context: Context) : FrameLayout(context) {
         request?.dispose()
         request = null
         image.setImageDrawable(null)
+    }
+
+    private fun formatDuration(milliseconds: Long): String {
+        val totalSeconds = milliseconds / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
