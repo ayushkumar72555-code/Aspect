@@ -23,6 +23,7 @@ androidx-hilt = { module = "androidx.hilt:hilt-navigation-compose", version = "1
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-video = { module = "io.coil-kt.coil3:coil-video", version.ref = "coil" }
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerView" }
 
 [plugins]
