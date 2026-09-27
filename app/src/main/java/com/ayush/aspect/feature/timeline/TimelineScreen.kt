@@ -1,7 +1,6 @@
 package com.ayush.aspect.feature.timeline
 
-import android.view.ViewGroup
-import androidx.compose.foundation.gestures.detectTransformGestures
+import android.view.ScaleGestureDetector
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,20 +58,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
             }
 
             AndroidView(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, _, zoom, _ ->
-                            zoomAccumulator *= zoom
-                            if (zoomAccumulator > 1.16f) {
-                                columns = (columns - 1).coerceAtLeast(2)
-                                zoomAccumulator = 1f
-                            } else if (zoomAccumulator < 0.86f) {
-                                columns = (columns + 1).coerceAtMost(5)
-                                zoomAccumulator = 1f
-                            }
-                        }
-                    },
+                modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
                     RecyclerView(ctx).apply {
                         setHasFixedSize(true)
@@ -92,6 +77,28 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                         }
                         this.layoutManager = layoutManager
                         this.adapter = adapter
+
+                        val scaleDetector = ScaleGestureDetector(
+                            ctx,
+                            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                                    zoomAccumulator *= detector.scaleFactor
+                                    if (zoomAccumulator > 1.16f) {
+                                        columns = (columns - 1).coerceAtLeast(2)
+                                        zoomAccumulator = 1f
+                                    } else if (zoomAccumulator < 0.86f) {
+                                        columns = (columns + 1).coerceAtMost(5)
+                                        zoomAccumulator = 1f
+                                    }
+                                    return true
+                                }
+                            }
+                        )
+
+                        setOnTouchListener { _, event ->
+                            scaleDetector.onTouchEvent(event)
+                            false
+                        }
                     }
                 },
                 update = { recyclerView ->
@@ -99,7 +106,6 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                     if (layoutManager.spanCount != columns) {
                         layoutManager.spanCount = columns
                         layoutManager.initialPrefetchItemCount = columns * 4
-                        recyclerView.invalidateItemDecorations()
                     }
                 }
             )
