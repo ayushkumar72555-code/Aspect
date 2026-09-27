@@ -70,4 +70,8 @@ class TimelineViewModel @Inject constructor(
         if (selected.isEmpty()) return
         viewModelScope.launch { repository.setFavorite(selected, favorite) }
     }
+
+    fun favorite(item: MediaItem, favorite: Boolean = true) {
+        viewModelScope.launch { repository.setFavorite(listOf(item), favorite) }
+    }
 }
