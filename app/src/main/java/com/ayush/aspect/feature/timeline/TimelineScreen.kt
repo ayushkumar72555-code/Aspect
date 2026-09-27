@@ -1,6 +1,7 @@
 package com.ayush.aspect.feature.timeline
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -80,7 +80,11 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                     context = context,
                     imageLoader = context.imageLoader,
                     onMediaClick = { item ->
-                        if (state.isSelectionMode) viewModel.toggleSelection(item.id)
+                        if (state.isSelectionMode) {
+                            viewModel.toggleSelection(item.id)
+                        } else {
+                            openMedia(context, item)
+                        }
                     },
                     onMediaLongPress = { item -> viewModel.toggleSelection(item.id) }
                 )
@@ -162,6 +166,16 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
     }
 }
 
+private fun openMedia(context: Context, item: MediaItem) {
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(item.uri, item.mimeType)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    runCatching {
+        ContextCompat.startActivity(context, intent, null)
+    }
+}
+
 @Composable
 private fun SelectionToolbar(
     count: Int,
@@ -202,7 +216,7 @@ private fun SelectionToolbar(
     }
 }
 
-private fun shareItems(context: android.content.Context, items: List<MediaItem>) {
+private fun shareItems(context: Context, items: List<MediaItem>) {
     if (items.isEmpty()) return
     val uris = ArrayList<Uri>(items.size)
     items.forEach { uris += it.uri }
@@ -228,7 +242,7 @@ private fun shareItems(context: android.content.Context, items: List<MediaItem>)
 }
 
 private fun requestDelete(
-    context: android.content.Context,
+    context: Context,
     items: List<MediaItem>,
     launcher: androidx.activity.result.ActivityResultLauncher<IntentSenderRequest>
 ) {
