@@ -1,6 +1,7 @@
 package com.ayush.aspect.core.data
 
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,13 +27,11 @@ class MediaStoreRepository @Inject constructor(
             MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME,
             MediaStore.Video.VideoColumns.DURATION
         )
-
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
         val args = arrayOf(
             MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
             MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
         )
-
         val result = ArrayList<MediaItem>()
         val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
 
@@ -64,7 +63,6 @@ class MediaStoreRepository @Inject constructor(
                 } else {
                     MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL, mediaId)
                 }
-
                 result += MediaItem(
                     id = mediaId,
                     uri = uri,
@@ -83,5 +81,14 @@ class MediaStoreRepository @Inject constructor(
             }
         }
         result
+    }
+
+    suspend fun setFavorite(items: List<MediaItem>, favorite: Boolean) = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.IS_FAVORITE, if (favorite) 1 else 0)
+        }
+        items.forEach { item ->
+            runCatching { contentResolver.update(item.uri, values, null, null) }
+        }
     }
 }
