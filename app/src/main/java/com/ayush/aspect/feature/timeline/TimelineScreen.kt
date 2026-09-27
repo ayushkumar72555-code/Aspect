@@ -1,9 +1,6 @@
 package com.ayush.aspect.feature.timeline
 
-import android.content.ContentResolver
-import android.graphics.Bitmap
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -28,20 +25,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Size
+import androidx.compose.ui.platform.LocalContext
 import com.ayush.aspect.core.data.MediaItem
-import com.ayush.aspect.core.media.ThumbnailLoader
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -117,8 +115,6 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
 @Composable
 private fun MediaThumbnail(item: MediaItem) {
     val context = LocalContext.current
-    val bitmap by rememberThumbnail(context.contentResolver, item)
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -126,14 +122,16 @@ private fun MediaThumbnail(item: MediaItem) {
             .clip(MaterialTheme.shapes.extraSmall)
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        bitmap?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = item.displayName,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(item.uri)
+                .size(Size(256, 256))
+                .crossfade(false)
+                .build(),
+            contentDescription = item.displayName,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
         if (item.isVideo) {
             Surface(
@@ -152,14 +150,6 @@ private fun MediaThumbnail(item: MediaItem) {
             }
         }
     }
-}
-
-@Composable
-private fun rememberThumbnail(contentResolver: ContentResolver, item: MediaItem) = produceState<Bitmap?>(
-    initialValue = null,
-    key1 = item.uri
-) {
-    value = ThumbnailLoader.load(contentResolver, item.uri)
 }
 
 private data class DateGroup(val title: String, val items: List<MediaItem>)
