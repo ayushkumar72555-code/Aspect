@@ -323,7 +323,7 @@ private fun buildTimelineItems(items: List<MediaItem>): List<MediaGridItem> {
     val result = ArrayList<MediaGridItem>(items.size + 64)
     var lastTitle: String? = null
     items.asSequence().sortedByDescending { it.dateTakenMillis }.forEach { item ->
-        val date = Calendar.getInstance().apply { timeInMillis = it.dateTakenMillis }
+        val date = Calendar.getInstance().apply { timeInMillis = item.dateTakenMillis }
         val title = when {
             sameDay(date, today) -> "Today"
             sameDay(date, yesterday) -> "Yesterday"
