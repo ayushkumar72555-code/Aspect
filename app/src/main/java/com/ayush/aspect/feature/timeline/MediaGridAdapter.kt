@@ -145,8 +145,10 @@ private class MediaCellView(context: Context) : FrameLayout(context) {
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val width = MeasureSpec.getSize(widthMeasure)
-        super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY))
+        // Keep every gallery cell square. Use the actual width supplied by RecyclerView.
+        val width = View.MeasureSpec.getSize(widthMeasureSpec)
+        val squareSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
+        super.onMeasure(widthMeasureSpec, squareSpec)
     }
 
     fun bind(
