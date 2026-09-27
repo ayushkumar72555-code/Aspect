@@ -1,26 +1,14 @@
 package com.ayush.aspect.feature.timeline
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
+import android.view.ViewGroup
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -29,152 +17,128 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.size.Size
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import coil3.imageLoader
 import com.ayush.aspect.core.data.MediaItem
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
+fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compose.hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     var columns by remember { mutableIntStateOf(3) }
     var zoomAccumulator by remember { mutableFloatStateOf(1f) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.isLoading -> androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            state.error != null -> ErrorState(state.error!!)
-            state.items.isEmpty() -> EmptyState()
-            else -> {
-                val grouped = remember(state.items) { groupByDate(state.items) }
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(columns),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTransformGestures { _, _, zoom, _ ->
-                                zoomAccumulator *= zoom
-                                if (zoomAccumulator > 1.18f) {
-                                    columns = (columns - 1).coerceAtLeast(2)
-                                    zoomAccumulator = 1f
-                                } else if (zoomAccumulator < 0.84f) {
-                                    columns = (columns + 1).coerceAtMost(5)
-                                    zoomAccumulator = 1f
-                                }
-                            }
-                        },
-                    contentPadding = PaddingValues(bottom = 96.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    grouped.forEach { group ->
-                        item(
-                            key = "header-${group.title}",
-                            span = { GridItemSpan(maxLineSpan) },
-                            contentType = "date"
-                        ) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
-                            ) {
-                                Text(
-                                    text = group.title,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                )
-                            }
-                        }
-                        items(
-                            items = group.items,
-                            key = { it.id },
-                            contentType = { if (it.isVideo) "video" else "image" }
-                        ) { item ->
-                            MediaThumbnail(item)
-                        }
-                    }
-                }
-            }
+    when {
+        state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
-    }
-}
 
-@Composable
-private fun MediaThumbnail(item: MediaItem) {
-    val context = LocalContext.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(item.uri)
-                .size(Size(256, 256))
-                .crossfade(false)
-                .build(),
-            contentDescription = item.displayName,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+        state.error != null -> ErrorState(state.error!!)
+        state.items.isEmpty() -> EmptyState()
 
-        if (item.isVideo) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp),
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Video",
-                    modifier = Modifier.padding(4.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
+        else -> {
+            val timelineItems = remember(state.items) { buildTimelineItems(state.items) }
+            val adapter = remember(context) {
+                MediaGridAdapter(
+                    context = context,
+                    imageLoader = context.imageLoader,
+                    onMediaLongPress = { /* Selection mode is Phase 5. */ }
                 )
             }
+
+            LaunchedEffect(timelineItems) {
+                adapter.submitItems(timelineItems)
+            }
+
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, _, zoom, _ ->
+                            zoomAccumulator *= zoom
+                            if (zoomAccumulator > 1.16f) {
+                                columns = (columns - 1).coerceAtLeast(2)
+                                zoomAccumulator = 1f
+                            } else if (zoomAccumulator < 0.86f) {
+                                columns = (columns + 1).coerceAtMost(5)
+                                zoomAccumulator = 1f
+                            }
+                        }
+                    },
+                factory = { ctx ->
+                    RecyclerView(ctx).apply {
+                        setHasFixedSize(true)
+                        itemAnimator = null
+                        setItemViewCacheSize(12)
+                        overScrollMode = RecyclerView.OVER_SCROLL_IF_CONTENT_SCROLLS
+                        recycledViewPool.setMaxRecycledViews(1, 24)
+                        recycledViewPool.setMaxRecycledViews(2, 24)
+
+                        val layoutManager = GridLayoutManager(ctx, columns).apply {
+                            initialPrefetchItemCount = columns * 4
+                            spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                                override fun getSpanSize(position: Int): Int =
+                                    if (adapter.getItemViewType(position) == 0) spanCount else 1
+                            }
+                        }
+                        this.layoutManager = layoutManager
+                        this.adapter = adapter
+                    }
+                },
+                update = { recyclerView ->
+                    val layoutManager = recyclerView.layoutManager as GridLayoutManager
+                    if (layoutManager.spanCount != columns) {
+                        layoutManager.spanCount = columns
+                        layoutManager.initialPrefetchItemCount = columns * 4
+                        recyclerView.invalidateItemDecorations()
+                    }
+                }
+            )
         }
     }
 }
 
-private data class DateGroup(val title: String, val items: List<MediaItem>)
-
-private fun groupByDate(items: List<MediaItem>): List<DateGroup> {
+private fun buildTimelineItems(items: List<MediaItem>): List<MediaGridItem> {
     val today = Calendar.getInstance()
     val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
     val sevenDaysAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }
     val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
     val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
 
-    return items
+    val result = ArrayList<MediaGridItem>(items.size + 64)
+    var lastTitle: String? = null
+
+    items.asSequence()
         .sortedByDescending { it.dateTakenMillis }
-        .groupBy { item ->
+        .forEach { item ->
             val date = Calendar.getInstance().apply { timeInMillis = item.dateTakenMillis }
-            when {
+            val title = when {
                 sameDay(date, today) -> "Today"
                 sameDay(date, yesterday) -> "Yesterday"
                 date.after(sevenDaysAgo) -> "Last 7 days"
                 date.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    date.get(Calendar.MONTH) == today.get(Calendar.MONTH) -> monthFormat.format(Date(item.dateTakenMillis))
+                    date.get(Calendar.MONTH) == today.get(Calendar.MONTH) ->
+                    monthFormat.format(Date(item.dateTakenMillis))
                 else -> yearFormat.format(Date(item.dateTakenMillis))
             }
+
+            if (title != lastTitle) {
+                result += MediaGridItem.Header(title)
+                lastTitle = title
+            }
+            result += MediaGridItem.Media(item)
         }
-        .map { (title, media) -> DateGroup(title, media) }
+
+    return result
 }
 
 private fun sameDay(a: Calendar, b: Calendar): Boolean =
@@ -184,13 +148,13 @@ private fun sameDay(a: Calendar, b: Calendar): Boolean =
 @Composable
 private fun ErrorState(message: String) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text("Couldn't load your gallery\n$message", style = MaterialTheme.typography.bodyLarge)
+        Text("Couldn't load your gallery\n$message")
     }
 }
 
 @Composable
 private fun EmptyState() {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text("No media yet\nPhotos and videos will appear here.", style = MaterialTheme.typography.bodyLarge)
+        Text("No media yet\nPhotos and videos will appear here.")
     }
 }
