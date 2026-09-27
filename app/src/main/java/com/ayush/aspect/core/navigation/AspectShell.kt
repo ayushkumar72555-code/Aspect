@@ -2,9 +2,6 @@ package com.ayush.aspect.core.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -13,10 +10,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ayush.aspect.R
 import com.ayush.aspect.feature.albums.AlbumsScreen
 import com.ayush.aspect.feature.timeline.TimelineScreen
 
@@ -25,13 +24,17 @@ fun AspectShell() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val items = listOf("timeline" to "Photos", "albums" to "Albums")
+    val items = listOf(
+        "timeline" to ("Photos" to R.drawable.ic_photo_library),
+        "albums" to ("Albums" to R.drawable.ic_collections)
+    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar {
-                items.forEach { (route, label) ->
+                items.forEach { (route, item) ->
+                    val (label, icon) = item
                     NavigationBarItem(
                         selected = currentRoute == route,
                         onClick = {
@@ -43,7 +46,7 @@ fun AspectShell() {
                         },
                         icon = {
                             Icon(
-                                imageVector = if (route == "timeline") Icons.Default.PhotoLibrary else Icons.Default.Collections,
+                                painter = painterResource(icon),
                                 contentDescription = label
                             )
                         },
