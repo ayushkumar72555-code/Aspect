@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -42,10 +43,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import com.ayush.aspect.core.data.MediaItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -55,7 +57,6 @@ import java.util.Locale
 @Composable
 fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
-
     var columns by remember { mutableIntStateOf(3) }
     var zoomAccumulator by remember { mutableFloatStateOf(1f) }
 
@@ -66,7 +67,6 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
             state.items.isEmpty() -> EmptyState()
             else -> {
                 val grouped = remember(state.items) { groupByDate(state.items) }
-
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     modifier = Modifier
@@ -90,17 +90,13 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
                     grouped.forEach { group ->
                         stickyHeader(key = "header-${group.title}", contentType = "date") {
                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .animateContentSize(),
+                                modifier = Modifier.fillMaxWidth().animateContentSize(),
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                             ) {
                                 Text(
                                     text = group.title,
                                     style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
                                 )
                             }
                         }
@@ -131,7 +127,7 @@ private fun MediaThumbnail(item: MediaItem) {
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
         if (bitmap != null) {
-            androidx.compose.foundation.Image(
+            Image(
                 bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = item.displayName,
                 modifier = Modifier.fillMaxSize(),
@@ -145,10 +141,7 @@ private fun MediaThumbnail(item: MediaItem) {
 
         if (item.isVideo) {
             Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .graphicsLayer { alpha = 0.92f },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).graphicsLayer { alpha = 0.92f },
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
             ) {
@@ -168,14 +161,15 @@ private fun rememberThumbnail(contentResolver: ContentResolver, item: MediaItem)
     initialValue = null,
     key1 = item.uri
 ) {
-    value = runCatching {
-        val size = 720
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            contentResolver.loadThumbnail(item.uri, android.util.Size(size, size), null)
-        } else {
-            null
-        }
-    }.getOrNull()
+    value = withContext(Dispatchers.IO) {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentResolver.loadThumbnail(item.uri, android.util.Size(720, 720), null)
+            } else {
+                null
+            }
+        }.getOrNull()
+    }
 }
 
 private data class DateGroup(val title: String, val items: List<MediaItem>)
@@ -197,7 +191,6 @@ private fun groupByDate(items: List<MediaItem>): List<DateGroup> {
                 date.after(sevenDaysAgo) -> "Last 7 days"
                 date.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
                     date.get(Calendar.MONTH) == today.get(Calendar.MONTH) -> monthFormat.format(Date(item.dateTakenMillis))
-                date.get(Calendar.YEAR) == today.get(Calendar.YEAR) -> "${yearFormat.format(Date(item.dateTakenMillis))}"
                 else -> yearFormat.format(Date(item.dateTakenMillis))
             }
         }
