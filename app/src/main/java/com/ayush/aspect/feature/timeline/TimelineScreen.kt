@@ -2,8 +2,6 @@ package com.ayush.aspect.feature.timeline
 
 import android.content.ContentResolver
 import android.graphics.Bitmap
-import android.os.Build
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,15 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ayush.aspect.core.data.MediaItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.ayush.aspect.core.media.ThumbnailLoader
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -61,7 +56,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            state.isLoading -> androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             state.error != null -> ErrorState(state.error!!)
             state.items.isEmpty() -> EmptyState()
             else -> {
@@ -93,9 +88,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
                             contentType = "date"
                         ) {
                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .animateContentSize(),
+                                modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                             ) {
                                 Text(
@@ -103,14 +96,14 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
                                     style = MaterialTheme.typography.labelLarge,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
                         }
                         items(
                             items = group.items,
                             key = { it.id },
-                            span = { GridItemSpan(1) }
+                            contentType = { if (it.isVideo) "video" else "image" }
                         ) { item ->
                             MediaThumbnail(item)
                         }
@@ -133,25 +126,20 @@ private fun MediaThumbnail(item: MediaItem) {
             .clip(MaterialTheme.shapes.extraSmall)
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        if (bitmap != null) {
+        bitmap?.let {
             Image(
-                bitmap = bitmap!!.asImageBitmap(),
+                bitmap = it.asImageBitmap(),
                 contentDescription = item.displayName,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-        } else {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(strokeWidth = 2.dp)
-            }
         }
 
         if (item.isVideo) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .graphicsLayer { alpha = 0.92f },
+                    .padding(6.dp),
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
             ) {
@@ -171,15 +159,7 @@ private fun rememberThumbnail(contentResolver: ContentResolver, item: MediaItem)
     initialValue = null,
     key1 = item.uri
 ) {
-    value = withContext(Dispatchers.IO) {
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentResolver.loadThumbnail(item.uri, android.util.Size(720, 720), null)
-            } else {
-                null
-            }
-        }.getOrNull()
-    }
+    value = ThumbnailLoader.load(contentResolver, item.uri)
 }
 
 private data class DateGroup(val title: String, val items: List<MediaItem>)
