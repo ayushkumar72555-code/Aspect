@@ -2,9 +2,11 @@ package com.ayush.aspect.feature.timeline
 
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.view.ScaleGestureDetector
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil3.imageLoader
@@ -59,30 +60,42 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
     var zoomAccumulator by remember { mutableFloatStateOf(1f) }
     var viewerItem by remember { mutableStateOf<MediaItem?>(null) }
 
-    val deleteLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) {
+    val scaleDetector = remember(context) {
+        ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                zoomAccumulator *= detector.scaleFactor
+                if (zoomAccumulator > 1.16f) {
+                    columns = (columns - 1).coerceAtLeast(2)
+                    zoomAccumulator = 1f
+                } else if (zoomAccumulator < 0.86f) {
+                    columns = (columns + 1).coerceAtMost(5)
+                    zoomAccumulator = 1f
+                }
+                return true
+            }
+        })
+    }
+
+    val deleteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         if (it.resultCode == android.app.Activity.RESULT_OK) {
             viewModel.clearSelection()
             viewModel.refresh()
         }
     }
 
-    if (viewerItem != null) {
+    viewerItem?.let { item ->
         MediaViewer(
-            item = viewerItem!!,
+            item = item,
             onDismiss = { viewerItem = null },
-            onShare = { shareItems(context, listOf(viewerItem!!)) },
-            onFavorite = { viewModel.favorite(viewerItem!!) },
+            onShare = { shareItems(context, listOf(item)) },
+            onFavorite = { viewModel.favorite(item) },
             onInfo = { }
         )
         return
     }
 
     when {
-        state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         state.error != null -> ErrorState(state.error!!)
         state.items.isEmpty() -> EmptyState()
         else -> {
@@ -92,13 +105,11 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                     context = context,
                     imageLoader = context.imageLoader,
                     onMediaClick = { item ->
-                        if (state.isSelectionMode) viewModel.toggleSelection(item.id)
-                        else viewerItem = item
+                        if (state.isSelectionMode) viewModel.toggleSelection(item.id) else viewerItem = item
                     },
                     onMediaLongPress = { item -> viewModel.toggleSelection(item.id) }
                 )
             }
-
             LaunchedEffect(timelineItems) { adapter.submitItems(timelineItems) }
             LaunchedEffect(state.selectedIds) { adapter.setSelectedIds(state.selectedIds) }
 
@@ -116,8 +127,7 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                             val layoutManager = GridLayoutManager(ctx, columns).apply {
                                 initialPrefetchItemCount = columns * 4
                                 spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                                    override fun getSpanSize(position: Int): Int =
-                                        if (adapter.getItemViewType(position) == 0) spanCount else 1
+                                    override fun getSpanSize(position: Int): Int = if (adapter.getItemViewType(position) == 0) spanCount else 1
                                 }
                             }
                             this.layoutManager = layoutManager
@@ -143,35 +153,13 @@ fun TimelineScreen(viewModel: TimelineViewModel = androidx.hilt.navigation.compo
                         onClose = viewModel::clearSelection,
                         onSelectAll = viewModel::selectAll,
                         onShare = { shareItems(context, viewModel.selectedItems()) },
-                        onFavorite = {
-                            viewModel.favoriteSelected(true)
-                            viewModel.clearSelection()
-                        },
+                        onFavorite = { viewModel.favoriteSelected(true); viewModel.clearSelection() },
                         onDelete = { requestDelete(context, viewModel.selectedItems(), deleteLauncher) }
                     )
                 }
             }
         }
     }
-
-    fun createScaleDetector(): android.view.ScaleGestureDetector = android.view.ScaleGestureDetector(
-        context,
-        object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
-                zoomAccumulator *= detector.scaleFactor
-                if (zoomAccumulator > 1.16f) {
-                    columns = (columns - 1).coerceAtLeast(2)
-                    zoomAccumulator = 1f
-                } else if (zoomAccumulator < 0.86f) {
-                    columns = (columns + 1).coerceAtMost(5)
-                    zoomAccumulator = 1f
-                }
-                return true
-            }
-        }
-    )
-
-    val scaleDetector = remember(context) { createScaleDetector() }
 }
 
 @Composable
@@ -203,16 +191,16 @@ private fun shareItems(context: Context, items: List<MediaItem>) {
         items.all { it.mimeType.startsWith("video/") } -> "video/*"
         else -> "*/*"
     }
-    val intent = if (uris.size == 1) android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+    val intent = if (uris.size == 1) Intent(Intent.ACTION_SEND).apply {
         type = mime
-        putExtra(android.content.Intent.EXTRA_STREAM, uris.first())
-        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    } else android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+        putExtra(Intent.EXTRA_STREAM, uris.first())
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    } else Intent(Intent.ACTION_SEND_MULTIPLE).apply {
         type = mime
-        putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, uris)
-        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    androidx.core.content.ContextCompat.startActivity(context, android.content.Intent.createChooser(intent, "Share media"), null)
+    androidx.core.content.ContextCompat.startActivity(context, Intent.createChooser(intent, "Share media"), null)
 }
 
 private fun requestDelete(context: Context, items: List<MediaItem>, launcher: androidx.activity.result.ActivityResultLauncher<IntentSenderRequest>) {
