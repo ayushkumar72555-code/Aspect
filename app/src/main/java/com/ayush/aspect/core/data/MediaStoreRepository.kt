@@ -2,6 +2,7 @@ package com.ayush.aspect.core.data
 
 import android.content.ContentResolver
 import android.content.ContentValues
+import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,7 +14,7 @@ class MediaStoreRepository @Inject constructor(
     private val contentResolver: ContentResolver
 ) {
     suspend fun getMedia(): List<MediaItem> = withContext(Dispatchers.IO) {
-        val projection = arrayOf(
+        val projection = mutableListOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.Files.FileColumns.MIME_TYPE,
@@ -27,6 +28,10 @@ class MediaStoreRepository @Inject constructor(
             MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME,
             MediaStore.Video.VideoColumns.DURATION
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            projection += MediaStore.MediaColumns.IS_FAVORITE
+        }
+
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
         val args = arrayOf(
             MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
@@ -37,7 +42,7 @@ class MediaStoreRepository @Inject constructor(
 
         contentResolver.query(
             collection,
-            projection,
+            projection.toTypedArray(),
             selection,
             args,
             "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC, ${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
@@ -54,6 +59,9 @@ class MediaStoreRepository @Inject constructor(
             val bucketId = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
             val bucketName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
             val duration = cursor.getColumnIndex(MediaStore.Video.VideoColumns.DURATION)
+            val favorite = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.MediaColumns.IS_FAVORITE)
+            } else -1
 
             while (cursor.moveToNext()) {
                 val isVideo = cursor.getInt(type) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
@@ -76,7 +84,8 @@ class MediaStoreRepository @Inject constructor(
                     bucketId = cursor.getString(bucketId),
                     bucketName = cursor.getString(bucketName),
                     isVideo = isVideo,
-                    durationMillis = if (duration >= 0) cursor.getLong(duration) else 0L
+                    durationMillis = if (duration >= 0) cursor.getLong(duration) else 0L,
+                    isFavorite = favorite >= 0 && cursor.getInt(favorite) != 0
                 )
             }
         }
