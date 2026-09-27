@@ -11,7 +11,7 @@ import javax.inject.Singleton
 class MediaStoreRepository @Inject constructor(
     private val contentResolver: ContentResolver
 ) {
-    suspend fun getMedia(limit: Int = 500): List<MediaItem> = withContext(Dispatchers.IO) {
+    suspend fun getMedia(): List<MediaItem> = withContext(Dispatchers.IO) {
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
@@ -56,7 +56,7 @@ class MediaStoreRepository @Inject constructor(
             val bucketName = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
             val duration = cursor.getColumnIndex(MediaStore.Video.VideoColumns.DURATION)
 
-            while (cursor.moveToNext() && result.size < limit) {
+            while (cursor.moveToNext()) {
                 val isVideo = cursor.getInt(type) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
                 val mediaId = cursor.getLong(id)
                 val uri = if (isVideo) {
