@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.stickyHeader
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,7 +44,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.runtime.collectAsState
 import com.ayush.aspect.core.data.MediaItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -88,15 +87,23 @@ fun TimelineScreen(viewModel: TimelineViewModel = hiltViewModel()) {
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     grouped.forEach { group ->
-                        stickyHeader(key = "header-${group.title}", contentType = "date") {
+                        item(
+                            key = "header-${group.title}",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = "date"
+                        ) {
                             Surface(
-                                modifier = Modifier.fillMaxWidth().animateContentSize(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateContentSize(),
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                             ) {
                                 Text(
                                     text = group.title,
                                     style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 10.dp)
                                 )
                             }
                         }
@@ -141,7 +148,10 @@ private fun MediaThumbnail(item: MediaItem) {
 
         if (item.isVideo) {
             Surface(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).graphicsLayer { alpha = 0.92f },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .graphicsLayer { alpha = 0.92f },
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
             ) {
