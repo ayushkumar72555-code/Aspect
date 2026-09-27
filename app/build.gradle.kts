@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.icons.extended)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.hilt)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
