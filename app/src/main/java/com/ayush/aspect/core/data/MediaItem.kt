@@ -15,5 +15,6 @@ data class MediaItem(
     val bucketId: String?,
     val bucketName: String?,
     val isVideo: Boolean,
-    val durationMillis: Long = 0L
+    val durationMillis: Long = 0L,
+    val isFavorite: Boolean = false
 )
