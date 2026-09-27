@@ -14,8 +14,12 @@ import kotlinx.coroutines.launch
 data class TimelineUiState(
     val isLoading: Boolean = true,
     val items: List<MediaItem> = emptyList(),
-    val error: String? = null
-)
+    val error: String? = null,
+    val selectedIds: Set<Long> = emptySet()
+) {
+    val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
+    val selectedCount: Int get() = selectedIds.size
+}
 
 @HiltViewModel
 class TimelineViewModel @Inject constructor(
@@ -42,5 +46,21 @@ class TimelineViewModel @Inject constructor(
                     )
                 }
         }
+    }
+
+    fun toggleSelection(itemId: Long) {
+        _uiState.value = _uiState.value.copy(
+            selectedIds = _uiState.value.selectedIds.toMutableSet().apply {
+                if (!add(itemId)) remove(itemId)
+            }
+        )
+    }
+
+    fun selectAll() {
+        _uiState.value = _uiState.value.copy(selectedIds = _uiState.value.items.mapTo(mutableSetOf()) { it.id })
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedIds = emptySet())
     }
 }
