@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.ayush.aspect.core.designsystem.AspectTheme
 import com.ayush.aspect.core.navigation.AspectShell
+import com.ayush.aspect.feature.permissions.MediaPermissionGate
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -13,7 +14,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AspectTheme {
-                AspectShell()
+                MediaPermissionGate { AspectShell() }
             }
         }
     }
