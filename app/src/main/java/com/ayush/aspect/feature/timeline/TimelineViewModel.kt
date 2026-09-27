@@ -28,17 +28,13 @@ class TimelineViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(TimelineUiState())
     val uiState: StateFlow<TimelineUiState> = _uiState.asStateFlow()
 
-    init {
-        refresh()
-    }
+    init { refresh() }
 
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             runCatching { repository.getMedia() }
-                .onSuccess { media ->
-                    _uiState.value = TimelineUiState(isLoading = false, items = media)
-                }
+                .onSuccess { media -> _uiState.value = TimelineUiState(isLoading = false, items = media) }
                 .onFailure { throwable ->
                     _uiState.value = TimelineUiState(
                         isLoading = false,
@@ -57,10 +53,21 @@ class TimelineViewModel @Inject constructor(
     }
 
     fun selectAll() {
-        _uiState.value = _uiState.value.copy(selectedIds = _uiState.value.items.mapTo(mutableSetOf()) { it.id })
+        _uiState.value = _uiState.value.copy(
+            selectedIds = _uiState.value.items.mapTo(mutableSetOf()) { it.id }
+        )
     }
 
     fun clearSelection() {
         _uiState.value = _uiState.value.copy(selectedIds = emptySet())
+    }
+
+    fun selectedItems(): List<MediaItem> =
+        _uiState.value.items.filter { it.id in _uiState.value.selectedIds }
+
+    fun favoriteSelected(favorite: Boolean) {
+        val selected = selectedItems()
+        if (selected.isEmpty()) return
+        viewModelScope.launch { repository.setFavorite(selected, favorite) }
     }
 }
