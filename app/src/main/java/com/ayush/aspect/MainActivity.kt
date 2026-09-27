@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.ayush.aspect.core.designsystem.AspectTheme
-import com.ayush.aspect.core.navigation.AspectShell
+import com.ayush.aspect.core.navigation.AspectShellV2
 import com.ayush.aspect.feature.permissions.MediaPermissionGate
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AspectTheme {
-                MediaPermissionGate { AspectShell() }
+                MediaPermissionGate { AspectShellV2() }
             }
         }
     }
