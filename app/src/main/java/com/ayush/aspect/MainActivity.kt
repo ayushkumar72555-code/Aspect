@@ -7,7 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import com.ayush.aspect.core.designsystem.AspectTheme
 import com.ayush.aspect.core.navigation.AspectShell
 import com.ayush.aspect.feature.permissions.MediaPermissionGate
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
